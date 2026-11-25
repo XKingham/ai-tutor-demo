@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="description" content="体验智研学堂的课程、教材答疑、练习、学习路径与教师工作台。页面中的内容均为静态演示示例。">
+  <title>智研学堂 · 技术演示</title>
+  <link rel="icon" href="./assets/brand.png" type="image/png">
+  <link rel="stylesheet" href="./assets/demo.css">
+  <script type="module" src="./assets/demo.js"></script>
+</head>
+<body>
+  <a class="skip" href="#workspace">跳到内容</a>
+  <header class="topbar">
+    <div class="head-inner">
+      <a class="identity" href="#student-home" aria-label="智研学堂演示首页">
+        <img src="./assets/brand.png" alt="" width="38" height="38">
+        <span><strong>智研学堂</strong><small>技术演示</small></span>
+      </a>
+      <nav class="role-switch" id="role-switch" aria-label="演示身份">
+        <a href="#student-home">学生学习端</a>
+        <a href="#teacher-home">教师管理端</a>
+      </nav>
+      <span class="static-label"><span></span> 静态演示</span>
+    </div>
+  </header>
+  <div class="app-frame">
+    <aside class="sidebar">
+      <p class="sidebar-label" id="sidebar-label"></p>
+      <nav id="sidebar-links" aria-label="工作台导航"></nav>
+      <div class="sidebar-note">
+        <strong>演示示例</strong>
+        <p>切换页面，了解角色与功能。</p>
+      </div>
+    </aside>
+    <main id="workspace" tabindex="-1">
+      <div class="demo-notice"><strong>演示示例</strong><span>内容与学情均为预置样例。AI 答复为固定示例，交互仅在当前页面生效。</span></div>
+      <div id="view"></div>
+      <p class="announcement" id="announcement" aria-live="polite"></p>
+      <footer class="workspace-footer">智研学堂 · 公开技术演示</footer>
+    </main>
+  </div>
+  <noscript><p>请启用 JavaScript 查看静态演示交互。</p></noscript>
+</body>
+</html>
