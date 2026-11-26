@@ -235,3 +235,7 @@ blockquote { color: #443969; background: #f6f2ff; border-left: 3px solid #b6a2f5
   .hero-summary strong { display: inline; margin-inline-end: .4rem; }
   .adaptive-list li { flex-wrap: wrap; }
 }
+.goal-fields input[type=date] { width: 100%; padding: .6rem; border-radius: .65rem; border: 1px solid #aec8bf; background: white; color: #143c30; font: inherit; }
+.exam-question .choices { display: grid; margin-bottom: .75rem; }
+.exam-question .choices button { justify-content: flex-start; text-align: left; }
+.exam-hero .hero-content { max-width: 52rem; }

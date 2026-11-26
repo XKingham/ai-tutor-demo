@@ -25,3 +25,32 @@ export const replay = {
   "model": "Qwen3-4B-Instruct-2507 · Q4_K_M",
   "engine": "DeepTutor AgentLoop"
 };
+
+export const examReplay = {
+  "model": "Qwen3-4B-Instruct-2507 · Q4_K_M",
+  "engine": "DeepTutor AgentLoop",
+  "question": "为什么 BFS 能找到无权图中边数最少的路径？",
+  "personas": {
+    "A": {
+      "strategy": "反例辨析",
+      "strategy_id": "contrast",
+      "answer": "BFS 逐层扩展，每层保证边数递增，因此首次到达目标点时，路径边数最少；DFS 会深入分支，可能走更长路径才抵达目标，不保证最短。两者在无权图中，BFS 适合找最短路径，DFS 不保证。\n\n请问：在无权图中，若要找到从起点到终点的最少边数路径，应选择哪种遍历策略？  \nA. 深度优先搜索（DFS）  \nB. 广度优先搜索（BFS）  \nC. 两者均可  \nD. 两者均不可",
+      "verified_example": "起点 A 为第 0 层。BFS 经 A→C→T 首次到达 T，走 2 条边，T 在第 2 层。若 DFS 优先走 B，可能先找到 A→B→D→T，走 3 条边。DFS 首次到达不保证最少边数。",
+      "source": "存储与遍历"
+    },
+    "A-followup": {
+      "strategy": "交互动画",
+      "strategy_id": "animation",
+      "answer": "BFS 能找到无权图中最短路径，因为它按层扩展，每层代表一条边的增量。  \n\n例如：从 A 出发，B 和 C 是第一层（1 条边），D 和 E 是第二层（2 条边），这样每层都比前一层多一条边，确保路径最短。  \n\n小练习：画出从起点 S 到终点 T 的无权图，用 BFS 方法标记每层节点，说明路径为何是边数最少的。",
+      "verified_example": null,
+      "source": "存储与遍历"
+    },
+    "B": {
+      "strategy": "交互动画",
+      "strategy_id": "animation",
+      "answer": "BFS 可找到无权图中边数最少的路径，因为其按层扩展，每层代表一条边的增量。  \n\n例如：从 A 到 C，路径 A→B→C 边数为 2，若 A→D→E→C 边数为 3，则 BFS 会优先选择边数更少的路径。  \n\n小练习：画出一个 4 个点的无权图，从点 1 出发，用 BFS 找到到点 4 的最短边数路径，并标出每层节点。",
+      "verified_example": null,
+      "source": "存储与遍历"
+    }
+  }
+};
