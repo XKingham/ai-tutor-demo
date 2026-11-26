@@ -253,12 +253,25 @@ const examStates = { candidate: "待区分", confirmed: "已确认", rejected: "
 
 const interventionLabels = { ...examStates, rejected: "已驳回" };
 
-function layerMap() {
-  return '<figure class="layer-map"><figcaption>BFS 如何逐层访问</figcaption>' +
-    '<div class="map-plot" aria-hidden="true"><i class="map-edges"></i>' +
-    '<div><b>A</b></div><div><b>B</b><b>C</b></div><div><b>D</b><b>E</b></div></div>' +
-    '<div class="map-key" aria-hidden="true"><span>第 0 层</span><span>第 1 层</span><span>第 2 层</span></div>' +
-    '<span class="sr-only">从 A 出发，先访问 B 和 C，再访问 D 和 E。</span></figure>';
+function trajectoryComparison() {
+  const learners = Object.values(exams);
+  const rows = [
+    ["已确认的错因", (learner) => learner.error?.status === "confirmed"
+      ? learner.error.label : !learner.diagnostic ? "待诊断"
+        : learner.diagnostic.correct ? "诊断通过" : "待区分题确认"],
+    ["上一次教学", (learner) => examStrategies[learner.exposures.at(-1)?.id] || "待开始"],
+    ["独立复验", (learner) => {
+      const latest = learner.history.findLast((event) => event.independent);
+      return latest ? latest.correct ? "已通过" : "待补救" : "待作答";
+    }],
+  ];
+  return '<section class="trajectory-notebook" aria-labelledby="trace-heading"><div class="trajectory-heading">' +
+    '<h2 id="trace-heading" tabindex="-1">两位学员的学习记录</h2>' +
+    link("teacher-exam", "查看教师干预", "secondary") + '</div>' +
+    '<table><thead><tr><th scope="col">学习证据</th>' +
+    learners.map((learner) => '<th scope="col">学员 ' + learner.name + '</th>').join("") +
+    '</tr></thead><tbody>' + rows.map(([label, value]) => '<tr><th scope="row">' + label + '</th>' +
+    learners.map((learner) => '<td>' + escape(value(learner)) + '</td>').join("") + '</tr>').join("") + '</tbody></table></section>';
 }
 
 function examWorkbench() {
@@ -289,13 +302,16 @@ function examWorkbench() {
       '<li><span class="day">第 ' + item.day + ' 天<br>' + item.minutes + ' 分钟</span><div><strong>' +
       item.action + ' · ' + item.label + '</strong><p>' + escape(item.reason) + '</p><small>估计优先级 ' + item.priority +
       '</small></div></li>').join("") + '</ol></section>';
-  return '<section class="exam-header"><div class="exam-intro"><p class="kicker">考研 408 / 数据结构</p>' +
-    '<h1>ExamPilot <span>考试工作台</span></h1><p class="exam-lead">从同一道图遍历题出发，看看你的作答如何改变下一步复习任务。</p>' +
+  return '<section class="exam-header"><div class="exam-intro"><p class="kicker">智研学堂 <span></span> 考研 408 教学案例</p>' +
+    '<h1>同一道题，<span>两条学习轨迹</span></h1><p class="exam-lead">两位学员答同一道图遍历题。跟着他们的作答，看错因如何改变下一步教学。</p>' +
     '<div class="actions">' + control("exam-jump", "进入当前步骤", activeStep, "", "highlight") +
-    link("teacher-exam", "查看教师干预", "hero-light") + '</div>' +
-    '<dl class="exam-metrics"><div><dt>距离考试</dt><dd>' + days +
+    control("exam-compare", "比较两名学员", "", "", "secondary") + '</div></div>' +
+    '<figure class="trajectory-art"><img src="./assets/study-trajectories.webp" width="1448" height="1086" fetchpriority="high" ' +
+    'alt="两条带朱红色手绘标记的半透明描图纸，从一个共同起点沿不同方向折叠展开"></figure></section>' +
+    '<section class="case-session" aria-label="图的遍历案例"><div><p class="kicker">ExamPilot · 图的遍历</p>' +
+    personaBar() + '</div><dl class="exam-metrics"><div><dt>距考试</dt><dd>' + days +
     '<small> 天</small></dd></div><div><dt>每日预算</dt><dd>' + state.budget +
-    '<small> 分钟</small></dd></div></dl></div>' + layerMap() + '</section>' +
+    '<small> 分钟</small></dd></div></dl></section>' +
     '<ol class="exam-steps" aria-label="教学进度">' + steps.map((step, index) =>
       index === activeStep ? '<li aria-current="step">' + control("exam-jump", step, index, 'aria-label="跳到当前步骤 ' + step + '"') + '</li>'
         : '<li>' + step + '</li>').join("") + '</ol>' +
@@ -322,7 +338,8 @@ function examWorkbench() {
       (sample.verified_example ? '<p class="memory-insight">' + escape(sample.verified_example) + '</p>' : '') +
       '<div class="answer" tabindex="-1">' + escape(sample.answer) + '</div>' : '') +
     '</section>' + (shown?.id === "animation" ? visualization() : "") +
-    '</div><aside class="exam-column" aria-label="考试计划">' + planPanels + '</aside></div>';
+    '</div><aside class="exam-column" aria-label="考试计划">' + planPanels + '</aside></div>' +
+    trajectoryComparison();
 }
 
 function examTeacher() {
@@ -361,7 +378,9 @@ function render() {
     if (element.hash.startsWith("#teacher") === isTeacher) element.setAttribute("aria-current", "true");
     else element.removeAttribute("aria-current");
   }
-  view.innerHTML = personaBar() + views[current](roster[alias]);
+  const edition = current === "exam";
+  document.querySelector(".app-frame").classList.toggle("case-edition", edition);
+  view.innerHTML = (edition ? "" : personaBar()) + views[current](roster[alias]);
   document.title = view.querySelector("h1").textContent + " · 智研学堂技术演示";
 }
 
@@ -397,6 +416,9 @@ view.addEventListener("click", (event) => {
     examSelections = {};
     latestExamResults = {};
     message = "全部演示状态已重置";
+  } else if (action === "exam-compare") {
+    view.querySelector("#trace-heading").focus();
+    return;
   } else if (action === "exam-jump") {
     const targets = ["diagnostic", "probe", "teach", "transfer"];
     const target = button.dataset.id === "2" ? view.querySelector('[data-action="exam-teach"]') :
