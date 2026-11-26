@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
-  <meta name="description" content="用三个虚拟学员体验个性化学习路径，比较同一道题的本地真实模型回放。">
+  <meta name="description" content="用两位虚拟学员体验考研 408：按考期排任务、诊断错因、独立复验，并查看本地模型回放。">
   <title>智研学堂 · 技术演示</title>
   <link rel="icon" href="./assets/brand.png" type="image/png">
   <link rel="stylesheet" href="./assets/demo.css">
@@ -22,20 +22,16 @@
         <a href="#exam">学生学习端</a>
         <a href="#teacher-exam">教师管理端</a>
       </nav>
-      <span class="static-label"><span></span> 静态演示</span>
+      <span class="static-label">浏览器演示</span>
     </div>
   </header>
   <div class="app-frame">
     <aside class="sidebar">
       <p class="sidebar-label" id="sidebar-label"></p>
       <nav id="sidebar-links" aria-label="工作台导航"></nav>
-      <div class="sidebar-note">
-        <strong>同一考纲，两条学习路径</strong>
-        <p>切换虚拟学员，比较错因、补救与验证。</p>
-      </div>
     </aside>
     <main id="workspace" tabindex="-1">
-      <div class="demo-notice"><strong>技术演示</strong><span>学习路径与学情由浏览器计算。AI 内容是本地真实模型脱敏回放，页面不调用模型、不收集个人信息。</span></div>
+      <div class="demo-notice"><strong>演示说明</strong><span>任务与学情由浏览器计算。AI 答复为本地真实模型脱敏回放。演示不收集个人信息。</span></div>
       <div id="view"></div>
       <p class="announcement" id="announcement" aria-live="polite"></p>
       <footer class="workspace-footer">智研学堂 · 公开技术演示</footer>
