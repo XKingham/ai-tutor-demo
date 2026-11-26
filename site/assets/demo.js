@@ -6,13 +6,19 @@ import { replay, examReplay } from "./replays.js";
 
 const learnerTabs = [
   ["exam", "考试闭环"], ["today", "今日任务"], ["diagnosis", "初始诊断"], ["plan", "学习路径"], ["tutor", "AI 教学"],
-  ["practice", "智能练习"], ["knowledge", "课程知识库"], ["memory", "学习记忆"], ["report", "学情报告"],
+  ["practice", "智能练习"], ["knowledge", "课程知识库"], ["probability", "概率推断"], ["memory", "学习记忆"], ["report", "学情报告"],
 ];
 const teacherTabs = [["teacher-exam", "考试干预"], ["teacher-report", "班级诊断"], ["teacher-home", "课程资料"]];
 const view = document.querySelector("#view");
+const teacherPortal = document.body.dataset.portal === "teacher";
+const studentUrl = new URL("../", import.meta.url);
+const teacherUrl = new URL("teacher/", studentUrl);
+const trajectoryArt = new URL("./study-trajectories.webp", import.meta.url).href;
+const sessionKey = "zhiyan-demo-portals-v1";
 const announcement = document.querySelector("#announcement");
 let roster = makeDemo();
 let exams = examDemo();
+let examHistory = [];
 let examSelections = {};
 let latestExamResults = {};
 let alias = "A";
@@ -21,12 +27,17 @@ let activity = null;
 let graphMode = "bfs";
 let graphStep = 0;
 let tutorOpen = false;
+let defectRate = 5;
 
 const escape = (value) => String(value).replace(/[&<>"']/g, (char) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
 const badge = (text, status = "") => '<span class="topic-state ' + status + '">' + escape(text) + '</span>';
-const link = (route, text, variant = "secondary") =>
-  '<a class="button ' + variant + '" href="#' + route + '">' + escape(text) + ' <span aria-hidden="true">→</span></a>';
+const link = (route, text, variant = "secondary") => {
+  const separate = route.startsWith("teacher") !== teacherPortal;
+  const target = separate ? (teacherPortal ? studentUrl : teacherUrl).href : "";
+  return '<a class="button ' + variant + '" href="' + target + '#' + route + '">' +
+    escape(text) + ' <span aria-hidden="true">→</span></a>';
+};
 const control = (action, label, id = "", extra = "", variant = "secondary") =>
   '<button type="button" class="button ' + variant + '" data-action="' + action + '" data-id="' + id + '" ' + extra + '>' + escape(label) + '</button>';
 
@@ -88,7 +99,7 @@ function tutor(learner) {
   const review = pathway(learner).find((row) => row.status === "review");
   return header("AI 教学", "三个档案使用同一个问题。可切换学员，对比本地真实模型的脱敏教学回放。") +
     '<div class="split"><section class="card padded"><div class="section-head"><h2>本地答疑回放</h2>' +
-    badge("真实模型回放", "ready") + '</div><p class="muted">' + escape(replay.model) + ' · DeepTutor 1.7.4 · 原生 Chat Agent</p>' +
+    badge("本地教学回放", "ready") + '</div>' +
     '<p class="question">' + escape(replay.question) + '</p><p class="replay-strategy">' + escape(receipt.strategy) +
     '</p>' + (tutorOpen ? (receipt.verified_example ? '<div class="memory-insight"><strong>课程核算例图</strong><p>' +
       escape(receipt.verified_example) + '</p></div>' : '') +
@@ -244,7 +255,7 @@ function teacherReport() {
     (errors.length ? '<ol class="adaptive-list">' + errors.map(({ question, count }) =>
       '<li><div><strong>' + question.stem + '</strong><p>' + count + ' 人仍有最近一次错误记录</p></div></li>').join("") +
       '</ol>' : '<p class="muted">等待虚拟学员提交作答。</p>') + '<div class="actions">' +
-    link("today", "返回学员工作台") + '</div></section></div>';
+    '<a class="button secondary" href="' + studentUrl.href + '#today">打开学生学习站</a>'  + '</div></section></div>';
 }
 
 const examActions = { diagnostic: "开始同一诊断题", probe: "打开区分题", transfer: "开始独立变式" };
@@ -265,7 +276,7 @@ function trajectoryComparison() {
   ];
   return '<section class="trajectory-notebook" aria-labelledby="trace-heading"><div class="trajectory-heading">' +
     '<h2 id="trace-heading" tabindex="-1">两位学员的学习记录</h2>' +
-    link("teacher-exam", "查看教师干预", "secondary") + '</div>' +
+    '<a class="button secondary" href="' + teacherUrl.href + '">打开教师管理站</a></div>' +
     '<table><thead><tr><th scope="col">学习证据</th>' +
     learners.map((learner) => '<th scope="col">学员 ' + learner.name + '</th>').join("") +
     '</tr></thead><tbody>' + rows.map(([label, value]) => '<tr><th scope="row">' + label + '</th>' +
@@ -304,7 +315,7 @@ function examWorkbench() {
     '<h1>同一道题，<span>两条学习轨迹</span></h1><p class="exam-lead">两位学员答同一道图遍历题。跟着他们的作答，看错因如何改变下一步教学。</p>' +
     '<div class="actions">' + control("exam-jump", "进入当前步骤", activeStep, "", "highlight") +
     control("exam-compare", "比较两名学员", "", "", "secondary") + '</div></div>' +
-    '<figure class="trajectory-art"><img src="./assets/study-trajectories.webp" width="1448" height="1086" fetchpriority="high" ' +
+    '<figure class="trajectory-art"><img src="' + trajectoryArt + '" width="1448" height="1086" fetchpriority="high" ' +
     'alt="两条带朱红色手绘标记的半透明描图纸，从一个共同起点沿不同方向折叠展开"></figure></section>' +
     '<section class="case-session" aria-label="图的遍历案例"><div><p class="kicker">ExamPilot · 图的遍历</p>' +
     personaBar() + '</div><dl class="exam-metrics"><div><dt>距考试</dt><dd>' + days +
@@ -332,7 +343,7 @@ function examWorkbench() {
     examStrategies[strategy.id] + '</p><p>' + escape(strategy.reason) + '</p>' +
     '<p class="muted">' + (strategy.replay ? "本地真实模型回放" : "课程规则演示") + '</p>' +
     control("exam-teach", strategy.replay ? "播放当前策略回放" : "记录规则补习", "", !state.diagnostic ? "disabled" : "", activeStep === 2 ? "primary" : "secondary") +
-    (sample ? '<p class="muted">展示 ' + escape(sample.strategy) + ' 的本地审校片段 · ' + escape(examReplay.model) + ' · 讲义：' + escape(sample.source) + '</p>' +
+    (sample ? '<p class="muted">展示 ' + escape(sample.strategy) + ' 的本地审校片段 · 讲义：' + escape(sample.source) + '</p>' +
       (sample.verified_example ? '<p class="memory-insight">' + escape(sample.verified_example) + '</p>' : '') +
       '<div class="answer" tabindex="-1">' + escape(sample.answer) + '</div>' : '') +
     '</section>' + (shown?.id === "animation" ? visualization() : "") +
@@ -356,30 +367,108 @@ function examTeacher() {
       (state.intervention === "accepted" ? control("exam-teacher-complete", "记录补救完成", state.name, "", "primary") : '') +
       '<ol class="adaptive-list">' + state.actions.map((item) => '<li>' + interventionLabels[item.status] +
         (item.evidence ? ' · 独立证据 #' + item.evidence : '') + '</li>').join("") + '</ol></section>').join("") +
-    '</div><div class="actions">' + link("exam", "返回考试工作台", "primary") + '</div>';
+    '</div><div class="actions"><a class="button primary" href="' + studentUrl.href + '">返回学生学习站</a></div>';
+}
+
+function probability() {
+  const defects = 1000 * defectRate / 100;
+  const trueAlerts = defects * .8;
+  const falseAlerts = (1000 - defects) * .1;
+  const alerts = trueAlerts + falseAlerts;
+  const percent = (trueAlerts / alerts * 100).toFixed(1);
+  return header("亮灯以后，缺陷有多可能？", "用一千件零件读懂条件概率、全概率和贝叶斯复核。", "概率推断 · 原创教材示例") +
+    '<div class="split"><section class="card padded"><h2>先数清楚亮灯的零件</h2>' +
+    '<p>有缺陷的零件有 80% 会亮灯，无缺陷的零件也有 10% 会误亮灯。</p>' +
+    '<div class="goal-fields"><label>实际缺陷率<select id="defect-rate">' +
+    [1, 5, 10, 20].map((rate) => '<option value="' + rate + '"' + (rate === defectRate ? ' selected' : '') + '>' +
+      rate + '%</option>').join("") + '</select></label></div></section>' +
+    '<section class="card padded"><h2>亮灯后的概率</h2><dl class="exam-metrics">' +
+    '<div><dt>实际缺陷且亮灯</dt><dd>' + trueAlerts + '</dd></div><div><dt>误亮灯</dt><dd>' + falseAlerts + '</dd></div>' +
+    '</dl><p class="probability-answer"><strong>' + percent + '%</strong> 的亮灯零件实际有缺陷</p>' +
+    '<p>' + trueAlerts + ' ÷ ' + alerts + '。分母包含真实告警和误报。</p></section></div>';
 }
 
 const views = {
   exam: examWorkbench, "teacher-exam": examTeacher,
   today, diagnosis: (learner) => practice(learner, "diagnosis"), plan, tutor, practice: (learner) => practice(learner, "practice"),
-  knowledge, memory, report, "teacher-report": teacherReport, "teacher-home": teacherHome,
+  knowledge, probability, memory, report, "teacher-report": teacherReport, "teacher-home": teacherHome,
 };
 
+function applyEvent(entry) {
+  if (!Array.isArray(entry)) return null;
+  const [action, who, value, detail] = entry;
+  if (!Object.hasOwn(roster, who)) return null;
+  const profile = roster[who].profile;
+  if (action === "legacy-answer" && Number.isInteger(detail?.choice) && ["diagnosis", "practice"].includes(detail?.kind)) {
+    const question = assessment.find((item) => item.id === value);
+    if (question && detail.choice >= 0 && detail.choice < question.choices.length) {
+      return submit(roster[who], question, detail.choice, detail.kind);
+    }
+  }
+  if (action === "legacy-goal" && Object.hasOwn(concepts, value)) {
+    profile.goal = value;
+    return true;
+  }
+  if (action === "legacy-minutes" && Number.isInteger(value) && value >= 5 && value <= 120) {
+    profile.minutes = value;
+    return true;
+  }
+  if (!Object.hasOwn(exams, who)) return null;
+  const learner = exams[who];
+  if (action === "goal" && typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isInteger(detail)) {
+    return setExamGoal(learner, value, detail);
+  }
+  if (action === "start" && ["diagnostic", "probe", "transfer"].includes(value)) return issueExam(learner, value);
+  if (action === "answer" && Number.isInteger(value) && value >= 0) {
+    const result = submitExam(learner, value);
+    if (result) latestExamResults[who] = result;
+    return result;
+  }
+  if (action === "teach" && learner.diagnostic) return viewExamTeaching(learner);
+  if (action === "teacher" && ["accepted", "rejected", "completed"].includes(value)) return teacherExamAction(learner, value);
+  return null;
+}
+
+function restoreDemo() {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(sessionKey));
+    if (!saved || !Array.isArray(saved.events)) return;
+    if (Object.hasOwn(profiles, saved.alias)) alias = saved.alias;
+    for (const entry of saved.events) {
+      if (applyEvent(entry)) examHistory.push(entry);
+    }
+  } catch {
+    // The teaching demo is still usable when tab storage is unavailable.
+  }
+}
+
+function rememberDemo() {
+  try {
+    sessionStorage.setItem(sessionKey, JSON.stringify({ alias, events: examHistory }));
+  } catch {
+    // The current page keeps its working state in memory.
+  }
+}
+
+function changeExam(...entry) {
+  const result = applyEvent(entry);
+  if (result) {
+    examHistory.push(entry);
+    rememberDemo();
+  }
+  return result;
+}
+
 function render() {
-  if ((current === "exam" || current === "teacher-exam") && !exams[alias]) alias = "A";
-  const isTeacher = current.startsWith("teacher");
-  const links = isTeacher ? teacherTabs : learnerTabs;
-  document.querySelector("#sidebar-label").textContent = isTeacher ? "教师工作台" : "学生工作台";
+  if ((current === "exam" || teacherPortal) && !exams[alias]) alias = "A";
+  const links = teacherPortal ? teacherTabs : learnerTabs;
+  document.querySelector("#sidebar-label").textContent = teacherPortal ? "教师工作台" : "学生工作台";
   document.querySelector("#sidebar-links").innerHTML = links.map(([id, label]) =>
     '<a href="#' + id + '" ' + (id === current ? 'aria-current="page"' : "") + '>' + label + '</a>').join("");
-  for (const element of document.querySelectorAll("#role-switch a")) {
-    if (element.hash.startsWith("#teacher") === isTeacher) element.setAttribute("aria-current", "true");
-    else element.removeAttribute("aria-current");
-  }
   const edition = current === "exam";
   document.querySelector(".app-frame").classList.toggle("case-edition", edition);
-  view.innerHTML = (edition ? "" : personaBar()) + views[current](roster[alias]);
-  document.title = view.querySelector("h1").textContent + " · 智研学堂技术演示";
+  view.innerHTML = (edition || teacherPortal ? "" : personaBar()) + views[current](roster[alias]);
+  document.title = view.querySelector("h1").textContent + " · 智研学堂";
 }
 
 function route() {
@@ -387,7 +476,13 @@ function route() {
   const hash = location.hash.slice(1);
   if (hash === "workspace" && view.childElementCount) return;
   const oldLinks = { "student-home": "today", ask: "tutor", "student-report": "report", "teacher-access": "teacher-home" };
-  current = Object.hasOwn(views, hash) ? hash : Object.hasOwn(oldLinks, hash) ? oldLinks[hash] : "exam";
+  const target = Object.hasOwn(oldLinks, hash) ? oldLinks[hash] : hash;
+  if (!teacherPortal && teacherTabs.some(([id]) => id === target)) {
+    location.replace(new URL("#" + target, teacherUrl));
+    return;
+  }
+  const tabs = teacherPortal ? teacherTabs : learnerTabs;
+  current = tabs.some(([id]) => id === target) ? target : tabs[0][0];
   if (previous !== current) activity = null;
   render();
   window.scrollTo(0, 0);
@@ -397,11 +492,11 @@ view.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-action]");
   if (!button) return;
   const { action, id } = button.dataset;
-  const learner = roster[alias];
   let message = "";
   if (action === "learner") {
     alias = id;
     activity = null;
+    rememberDemo();
     message = "已切换到" + profiles[alias].name;
   } else if (action === "reset") {
     roster = makeDemo();
@@ -411,8 +506,10 @@ view.addEventListener("click", (event) => {
     graphStep = 0;
     tutorOpen = false;
     exams = examDemo();
+    examHistory = [];
     examSelections = {};
     latestExamResults = {};
+    rememberDemo();
     message = "全部演示状态已重置";
   } else if (action === "exam-compare") {
     view.querySelector("#trace-heading").focus();
@@ -425,27 +522,27 @@ view.addEventListener("click", (event) => {
     focus?.focus();
     return;
   } else if (action === "exam-start") {
-    if (!issueExam(exams[alias], id)) message = "暂无可用题，或有一题尚未提交。";
+    if (!changeExam("start", alias, id)) message = "暂无可用题，或有一题尚未提交。";
     else delete examSelections[alias];
   } else if (action === "exam-choice") {
     examSelections[alias] = Number(id);
   } else if (action === "exam-submit") {
-    latestExamResults[alias] = submitExam(exams[alias], examSelections[alias]);
+    changeExam("answer", alias, examSelections[alias]);
     delete examSelections[alias];
     message = "已更新个人证据和考试任务";
   } else if (action === "exam-teach") {
-    const selection = viewExamTeaching(exams[alias]);
+    const selection = changeExam("teach", alias);
     graphMode = exams[alias].error?.id === "edge-cost" ? "weighted" : "bfs";
     graphStep = 0;
-    message = selection.replay ? "已播放审校片段" : "已记录规则补习";
+    message = selection?.replay ? "已播放审校片段" : "已记录规则补习";
   } else if (action.startsWith("exam-teacher-")) {
     const next = { accept: "accepted", reject: "rejected", complete: "completed" }[action.split("-").at(-1)];
-    teacherExamAction(exams[id], next);
+    changeExam("teacher", id, next);
     message = "教学操作已保存";
   } else if (action === "choice") {
     activity.choice = Number(id);
   } else if (action === "answer") {
-    activity.result = submit(learner, activity.question, activity.choice, current);
+    activity.result = changeExam("legacy-answer", alias, activity.question.id, { choice: activity.choice, kind: current });
     message = "已更新知识点掌握证据和学习路径";
   } else if (action === "continue") {
     activity = null;
@@ -453,7 +550,7 @@ view.addEventListener("click", (event) => {
     tutorOpen = true;
     message = "本地真实模型回放已展开";
   } else if (action === "reading") {
-    learner.reading = id;
+    roster[alias].reading = id;
   } else if (action === "mode") {
     graphMode = id;
     graphStep = 0;
@@ -477,17 +574,24 @@ view.addEventListener("click", (event) => {
 
 view.addEventListener("change", (event) => {
   const { id, value } = event.target;
+  if (id === "defect-rate") {
+    defectRate = Number(value);
+    render();
+    document.getElementById(id)?.focus({ preventScroll: true });
+    announcement.textContent = "亮灯后的概率已重算";
+    return;
+  }
   if (id === "exam-date" || id === "exam-budget") {
     const state = exams[alias];
-    const changed = setExamGoal(state, id === "exam-date" ? value : state.date, id === "exam-budget" ? Number(value) : state.budget);
+    const changed = changeExam("goal", alias, id === "exam-date" ? value : state.date,
+      id === "exam-budget" ? Number(value) : state.budget);
     render();
     document.getElementById(id)?.focus({ preventScroll: true });
     announcement.textContent = changed ? "考试目标生效，任务已重排" : "请选择有效日期和每日时间";
     return;
   }
-  const profile = roster[alias].profile;
   if (id !== "goal" && id !== "minutes") return;
-  profile[id] = id === "minutes" ? Number(value) : value;
+  changeExam("legacy-" + id, alias, id === "minutes" ? Number(value) : value);
   activity = null;
   render();
   document.getElementById(id).focus({ preventScroll: true });
@@ -495,4 +599,15 @@ view.addEventListener("change", (event) => {
 });
 
 window.addEventListener("hashchange", route);
+window.addEventListener("pageshow", (event) => {
+  if (!event.persisted) return;
+  roster = makeDemo();
+  exams = examDemo();
+  examHistory = [];
+  latestExamResults = {};
+  examSelections = {};
+  restoreDemo();
+  render();
+});
+restoreDemo();
 route();

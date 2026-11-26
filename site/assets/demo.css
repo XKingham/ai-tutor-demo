@@ -362,3 +362,8 @@ blockquote { color: #443969; background: #f6f2ff; border-left: 3px solid #b6a2f5
   .case-session { grid-template-columns: minmax(0, 1fr); align-items: stretch; gap: 8px; }
   .case-session .exam-metrics { min-width: 0; }
 }
+
+.portal-label { justify-self: center; color: var(--brand); font-size: .9rem; font-weight: 600; }
+.probability-answer { margin: 16px 0 4px; }
+.probability-answer strong { display: block; font: 600 2.4rem Georgia, serif; color: var(--brand); }
+@media (max-width: 500px) { .portal-label { justify-self: end; } }

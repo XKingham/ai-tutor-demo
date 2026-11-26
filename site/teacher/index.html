@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="description" content="查看两位虚拟学员的作答证据与干预结果。">
+  <title>智研学堂 · 教师管理演示</title>
+  <link rel="icon" href="../assets/brand.png" type="image/png">
+  <link rel="stylesheet" href="../assets/demo.css?v=portals-1">
+  <script type="module" src="../assets/demo.js?v=portals-1"></script>
+</head>
+<body data-portal="teacher">
+  <a class="skip" href="#workspace">跳到内容</a>
+  <header class="topbar">
+    <div class="head-inner">
+      <a class="identity" href="./" aria-label="智研学堂演示首页">
+        <img src="../assets/brand.png" alt="" width="38" height="38">
+        <span><strong>智研学堂</strong><small>教师演示</small></span>
+      </a>
+      <span class="portal-label">教师管理站</span>
+      <span class="static-label">教学案例演示</span>
+    </div>
+  </header>
+  <div class="app-frame">
+    <aside class="sidebar">
+      <p class="sidebar-label" id="sidebar-label"></p>
+      <nav id="sidebar-links" aria-label="工作台导航"></nav>
+    </aside>
+    <main id="workspace" tabindex="-1">
+      <div class="demo-notice"><strong>演示说明</strong><span>可查看在这个浏览器标签页内完成的虚拟学员作答。演示不收集个人信息。</span></div>
+      <div id="view"></div>
+      <p class="announcement" id="announcement" aria-live="polite"></p>
+      <footer class="workspace-footer">智研学堂 · 公开技术演示</footer>
+    </main>
+  </div>
+  <noscript><p>请启用 JavaScript 查看静态演示交互。</p></noscript>
+</body>
+</html>

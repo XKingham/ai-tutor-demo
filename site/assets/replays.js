@@ -22,12 +22,10 @@ export const replay = {
       "section": "存储与遍历"
     }
   },
-  "model": "Qwen3-4B-Instruct-2507 · Q4_K_M",
   "engine": "DeepTutor AgentLoop"
 };
 
 export const examReplay = {
-  "model": "Qwen3-4B-Instruct-2507 · Q4_K_M",
   "engine": "DeepTutor AgentLoop",
   "question": "为什么 BFS 能找到无权图中边数最少的路径？",
   "personas": {
