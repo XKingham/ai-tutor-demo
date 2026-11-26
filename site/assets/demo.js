@@ -11,7 +11,6 @@ const learnerTabs = [
 const teacherTabs = [["teacher-exam", "考试干预"], ["teacher-report", "班级诊断"], ["teacher-home", "课程资料"]];
 const view = document.querySelector("#view");
 const announcement = document.querySelector("#announcement");
-const symbols = ["◉", "▥", "⌁", "↪", "✦", "☑", "▤", "▣", "▥"];
 let roster = makeDemo();
 let exams = examDemo();
 let examSelections = {};
@@ -264,48 +263,64 @@ function examWorkbench() {
   const chosen = examSelections[alias];
   const result = latestExamResults[alias];
   const plan = examPlan(state);
-  return '<section class="course-hero personal-hero exam-hero"><div class="hero-content"><span class="hero-label">考研 408 · 同一考纲</span>' +
-    '<h1>ExamPilot 考试工作台</h1><p>诊断、补救、独立验证和教师干预共用作答证据。</p><div class="actions">' +
-    link("teacher-exam", "查看教师干预", "hero-light") + '</div></div><div class="hero-summary"><strong>' + days +
-    '</strong><span>天后考试</span><p>每天 ' + state.budget + ' 分钟</p></div></section>' +
-    '<div class="split section"><section class="card padded"><div class="section-head"><h2>考试目标</h2>' +
-    badge("虚拟档案") + '</div><div class="goal-fields"><label>考试日期<input type="date" id="exam-date" min="' +
+  const pendingProbe = state.error?.status === "candidate";
+  const availableTransfer = canStartExamTransfer(state);
+  const independent = state.history.filter((item) => item.independent);
+  const passed = independent.filter((item) => item.correct).length;
+  const steps = ["诊断", "区分错因", "专属教学", "独立复验"];
+  const activeStep = state.ticket ? { diagnostic: 0, probe: 1, transfer: 3 }[state.ticket.kind]
+    : !state.diagnostic ? 0 : pendingProbe ? 1 : availableTransfer || passed ? 3 : 2;
+  return '<section class="exam-header"><div><p class="kicker">考研 408 · 数据结构</p>' +
+    '<h1>ExamPilot 考试工作台</h1>' + link("teacher-exam", "查看教师干预", "secondary") +
+    '</div><dl class="exam-metrics"><div><dt>距离考试</dt><dd>' + days +
+    '<small> 天</small></dd></div><div><dt>每日预算</dt><dd>' + state.budget +
+    '<small> 分钟</small></dd></div></dl></section>' +
+    '<ol class="exam-steps" aria-label="教学进度">' + steps.map((step, index) =>
+      index === activeStep ? '<li aria-current="step">' + control("exam-jump", step, index, 'aria-label="跳到当前步骤 ' + step + '"') + '</li>'
+        : '<li>' + step + '</li>').join("") + '</ol>' +
+    '<div class="split section exam-grid"><section class="card padded"><div class="section-head"><h2>考试目标</h2></div>' +
+    '<div class="goal-fields"><label>考试日期<input type="date" id="exam-date" min="' +
     escape(state.today) + '" value="' + escape(state.date) + '"></label><label>每天可用分钟<select id="exam-budget">' +
     [8, 12, 18, 25, 35, 45, 60].map((minutes) => '<option' + (minutes === state.budget ? " selected" : "") +
-      '>' + minutes + '</option>').join("") + '</select></label></div><p class="muted">共享样板考纲。优先级为规则估计。</p></section>' +
-    '<section class="card padded"><div class="section-head"><h2>可解释的学习任务</h2>' +
-    badge("版本 " + state.version) + '</div><ol class="adaptive-list">' + plan.map((item) =>
-      '<li><span class="day">第 ' + item.day + ' 天 · ' + item.minutes + ' 分钟</span><div><strong>' +
+      '>' + minutes + '</option>').join("") + '</select></label></div><p class="muted exam-note">调整后自动重排任务。此处采用虚拟考纲权重。</p></section>' +
+    '<section class="card padded exam-plan"><div class="section-head"><h2>学习任务</h2>' +
+    '<span class="muted">版本 ' + state.version + '</span></div><ol class="adaptive-list">' + plan.map((item) =>
+      '<li><span class="day">第 ' + item.day + ' 天<br>' + item.minutes + ' 分钟</span><div><strong>' +
       item.action + ' · ' + item.label + '</strong><p>' + escape(item.reason) + '</p><small>估计优先级 ' + item.priority +
       '</small></div></li>').join("") + '</ol></section></div>' +
-    '<div class="split section"><section class="card padded"><h2>ErrorMind 错因与验证</h2><div class="actions">' +
-    control("exam-start", examActions.diagnostic, "diagnostic", state.diagnostic ? "disabled" : "", "primary") +
-    control("exam-start", examActions.probe, "probe", state.error?.status !== "candidate" ? "disabled" : "") +
-    control("exam-start", examActions.transfer, "transfer", !canStartExamTransfer(state) || state.ticket ? "disabled" : "") + '</div>' +
+    '<div class="split section exam-grid"><section class="card padded exam-assessment"><h2>ErrorMind 错因与验证</h2><div class="actions">' +
+    control("exam-start", examActions.diagnostic, "diagnostic", state.diagnostic || question ? "disabled" : "", activeStep === 0 ? "primary" : "secondary") +
+    control("exam-start", examActions.probe, "probe", !pendingProbe || question ? "disabled" : "", activeStep === 1 ? "primary" : "secondary") +
+    control("exam-start", examActions.transfer, "transfer", !availableTransfer || question ? "disabled" : "", activeStep === 3 ? "primary" : "secondary") + '</div>' +
     (question ? '<div class="exam-question"><p class="question">' + escape(question.stem) + '</p><div class="choices">' +
       question.options.map((option, index) => control("exam-choice", option, index, 'aria-pressed="' + (chosen === index) + '"')).join("") +
       '</div>' + control("exam-submit", "提交本题", "", chosen === undefined ? "disabled" : "", "primary") + '</div>' : '') +
-    (result ? '<div class="result ' + (result.correct && !result.assisted ? "correct" : "incorrect") + '"><strong>' +
+    (result ? '<div class="result ' + (result.correct && !result.assisted ? "correct" : "incorrect") + '" tabindex="-1"><strong>' +
       (result.assisted ? "含求助，未计入" : result.correct ? "本题通过" : "本题未通过") + '</strong><p>' +
       escape(result.explanation) + '</p></div>' : '') +
     (state.error ? '<p><strong>' + state.error.label + '</strong> ' + badge(examStates[state.error.status]) +
       (state.error.resolved ? ' · 已获独立复验证据' : '') + '</p>' : '') +
-    '<h3>Learning Evaluator 独立证据</h3><p>' + state.history.filter((item) => item.independent).length +
-    ' 道未见变式 · ' + state.history.filter((item) => item.independent && item.correct).length + ' 道通过</p>' +
+    '<h3>Learning Evaluator 独立证据</h3><p>' + independent.length +
+    ' 道未见变式 · ' + passed + ' 道通过</p>' +
     '<p class="muted">本次浏览器演示的延时保持测评尚未到期。</p></section>' +
-    '<section class="card padded"><div class="section-head"><h2>Adaptive Teaching 专属教学</h2>' +
-    badge(strategy.replay ? "本地真实模型回放" : "课程规则演示", "ready") + '</div><p><strong>' + examStrategies[strategy.id] +
-    '</strong></p><p>' + escape(strategy.reason) + '</p>' +
-    control("exam-teach", strategy.replay ? "播放当前策略回放" : "记录规则补习", "", !state.diagnostic ? "disabled" : "", "primary") +
+    '<section class="card padded exam-teaching"><h2>Adaptive Teaching 专属教学</h2><p class="exam-strategy">' +
+    examStrategies[strategy.id] + '</p><p>' + escape(strategy.reason) + '</p>' +
+    '<p class="muted">' + (strategy.replay ? "本地真实模型回放" : "课程规则演示") + '</p>' +
+    control("exam-teach", strategy.replay ? "播放当前策略回放" : "记录规则补习", "", !state.diagnostic ? "disabled" : "", activeStep === 2 ? "primary" : "secondary") +
     (sample ? '<p class="muted">展示 ' + escape(sample.strategy) + ' 的本地审校片段 · ' + escape(examReplay.model) + ' · 讲义：' + escape(sample.source) + '</p>' +
       (sample.verified_example ? '<p class="memory-insight">' + escape(sample.verified_example) + '</p>' : '') +
-      '<div class="answer">' + escape(sample.answer) + '</div>' : '') +
+      '<div class="answer" tabindex="-1">' + escape(sample.answer) + '</div>' : '') +
     '</section></div>' + (shown?.id === "animation" ? visualization() : "");
 }
 
 function examTeacher() {
-  return header("Teacher Copilot 干预队列", "建议取自这次演示的作答。教师操作与独立验证会实时更新状态。", "教师管理端") +
-    '<div class="split">' + Object.values(exams).map((state) => '<section class="card padded"><div class="section-head"><h2>虚拟学员 ' +
+  const learners = Object.values(exams);
+  const count = (statuses) => learners.filter(({ intervention }) => statuses.includes(intervention)).length;
+  const metrics = [["待处理", count(["suggested", "accepted"])], ["待独立验证", count(["completed"])], ["已有独立证据", count(["verified"])]];
+  return header("Teacher Copilot 干预队列", "根据虚拟学员的作答，记录补救并查看后续独立证据。", "教师管理端") +
+    '<dl class="exam-metrics teacher-metrics">' + metrics.map(([label, value]) =>
+      '<div><dt>' + label + '</dt><dd>' + value + '</dd></div>').join("") + '</dl>' +
+    '<div class="split teacher-queue">' + learners.map((state) => '<section class="card padded"><div class="section-head"><h2>虚拟学员 ' +
       state.name + '</h2>' + (state.intervention ? badge(interventionLabels[state.intervention]) : '') + '</div>' +
       (state.error ? '<p>' + state.error.label + ' · ' + examStates[state.error.status] + '</p>' : '<p class="muted">暂无错因证据。</p>') +
       (state.intervention === "suggested" ? '<div class="actions">' +
@@ -327,9 +342,8 @@ function render() {
   const isTeacher = current.startsWith("teacher");
   const links = isTeacher ? teacherTabs : learnerTabs;
   document.querySelector("#sidebar-label").textContent = isTeacher ? "教师工作台" : "学生工作台";
-  document.querySelector("#sidebar-links").innerHTML = links.map(([id, label], index) =>
-    '<a href="#' + id + '" ' + (id === current ? 'aria-current="page"' : "") + '><span aria-hidden="true" class="nav-symbol">' +
-    symbols[index] + '</span><span>' + label + '</span></a>').join("");
+  document.querySelector("#sidebar-links").innerHTML = links.map(([id, label]) =>
+    '<a href="#' + id + '" ' + (id === current ? 'aria-current="page"' : "") + '>' + label + '</a>').join("");
   for (const element of document.querySelectorAll("#role-switch a")) {
     if (element.hash.startsWith("#teacher") === isTeacher) element.setAttribute("aria-current", "true");
     else element.removeAttribute("aria-current");
@@ -370,6 +384,13 @@ view.addEventListener("click", (event) => {
     examSelections = {};
     latestExamResults = {};
     message = "全部演示状态已重置";
+  } else if (action === "exam-jump") {
+    const targets = ["diagnostic", "probe", "teach", "transfer"];
+    const target = button.dataset.id === "2" ? view.querySelector('[data-action="exam-teach"]') :
+      view.querySelector('[data-action="exam-start"][data-id="' + targets[Number(id)] + '"]');
+    const focus = view.querySelector(".exam-question button") || (target?.disabled ? view.querySelector(".exam-assessment .result") : target);
+    focus?.focus();
+    return;
   } else if (action === "exam-start") {
     if (!issueExam(exams[alias], id)) message = "暂无可用题，或有一题尚未提交。";
     else delete examSelections[alias];
@@ -411,8 +432,13 @@ view.addEventListener("click", (event) => {
   render();
   const buttons = [...view.querySelectorAll("button[data-action]")];
   const restored = buttons.find((item) => item.dataset.action === action && item.dataset.id === id && !item.disabled);
-  (restored || view.querySelector('.result + .actions button, .answer, .choice:not([disabled])') || view.querySelector('h1'))
-    ?.focus({ preventScroll: true });
+  const response = { "exam-start": ".exam-question button", "exam-submit": ".exam-assessment .result",
+    "exam-teach": ".exam-teaching .answer" }[action];
+  const next = response && view.querySelector(response);
+  const fallback = view.querySelector('.result + .actions button, .choice:not([disabled]), h1');
+  const focus = next || restored || fallback;
+  if (focus?.matches("h1")) focus.tabIndex = -1;
+  focus?.focus({ preventScroll: focus !== next });
   announcement.textContent = message;
 });
 
