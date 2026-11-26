@@ -83,9 +83,11 @@ function tutor(learner) {
   const review = pathway(learner).find((row) => row.status === "review");
   return header("AI 教学", "三个档案使用同一个问题。可切换学员，对比本地真实模型的脱敏教学回放。") +
     '<div class="split"><section class="card padded"><div class="section-head"><h2>本地答疑回放</h2>' +
-    badge("真实模型回放", "ready") + '</div><p class="muted">' + escape(replay.model) + ' · DeepTutor 1.7.4</p>' +
+    badge("真实模型回放", "ready") + '</div><p class="muted">' + escape(replay.model) + ' · DeepTutor 1.7.4 · 原生 Chat Agent</p>' +
     '<p class="question">' + escape(replay.question) + '</p><p class="replay-strategy">' + escape(receipt.strategy) +
-    '</p>' + (tutorOpen ? '<div class="answer" tabindex="-1">' + escape(receipt.answer) + '</div><details class="source"><summary>核对公开示例材料</summary><blockquote>' +
+    '</p>' + (tutorOpen ? (receipt.verified_example ? '<div class="memory-insight"><strong>课程核算例图</strong><p>' +
+      escape(receipt.verified_example) + '</p></div>' : '') +
+      '<div class="answer" tabindex="-1">' + escape(receipt.answer) + '</div><details class="source"><summary>核对公开示例材料</summary><blockquote>' +
       lessons[concepts.traversal.lesson].quote + '</blockquote>' + (alias === "C" ? '<blockquote>' +
       lessons[concepts.shortest.lesson].quote + '</blockquote>' : '') + '<p>回放所用课程章节：' + escape(receipt.section) +
       '</p></details><p class="muted">展示经内容复核的脱敏片段。</p>' : control("replay", "播放本地答复", "", "", "primary")) + '</section>' +

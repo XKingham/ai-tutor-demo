@@ -42,10 +42,14 @@ test("three profiles produce different day allocations and consume their own evi
 
 test("verified real model replies cover distinct teaching strategies", () => {
   assert.match(replay.question, /BFS/);
+  assert.equal(replay.engine, "DeepTutor AgentLoop");
   assert.deepEqual(Object.keys(replay.personas), ["A", "B", "C"]);
   assert.match(replay.personas.A.answer, /排队|楼层|一栋楼/);
-  assert.match(replay.personas.B.answer, /DFS/);
+  assert.match(replay.personas.B.answer, /BFS.*(?:最少|最短)/s);
+  assert.match(replay.personas.B.verified_example, /DFS.*不保证最少边数/);
   assert.match(replay.personas.C.answer, /Dijkstra|权值/);
-  assert.doesNotMatch(replay.personas.B.answer, /A→C→T 是第三层/);
+  assert.match(replay.personas.B.verified_example, /A→C→T.*走 2 条边，T 在第 2 层/);
+  assert.match(replay.personas.B.verified_example, /A→B→D→T.*走 3 条边/);
+  assert.doesNotMatch(replay.personas.B.answer, /A→C→T|第三层/);
   assert.equal(new Set(Object.values(replay.personas).map((row) => row.answer)).size, 3);
 });
