@@ -259,11 +259,9 @@ function trajectoryComparison() {
     ["已确认的错因", (learner) => learner.error?.status === "confirmed"
       ? learner.error.label : !learner.diagnostic ? "待诊断"
         : learner.diagnostic.correct ? "诊断通过" : "待区分题确认"],
-    ["上一次教学", (learner) => examStrategies[learner.exposures.at(-1)?.id] || "待开始"],
-    ["独立复验", (learner) => {
-      const latest = learner.history.findLast((event) => event.independent);
-      return latest ? latest.correct ? "已通过" : "待补救" : "待作答";
-    }],
+    ["教学轨迹", (learner) => learner.exposures.map(({ id }) => examStrategies[id]).join(" → ") || "待开始"],
+    ["独立复验", (learner) => learner.history.filter((event) => event.independent)
+      .map(({ correct }) => correct ? "已通过" : "未通过").join(" → ") || "待作答"],
   ];
   return '<section class="trajectory-notebook" aria-labelledby="trace-heading"><div class="trajectory-heading">' +
     '<h2 id="trace-heading" tabindex="-1">两位学员的学习记录</h2>' +
