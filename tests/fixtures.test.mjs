@@ -22,6 +22,13 @@ test("static page identifies the demo and forbids submissions", async () => {
   assert.match(page, /connect-src 'none'/);
   assert.match(page, /form-action 'none'/);
   assert.doesNotMatch(page, /<form\b/i);
+  const teacher = await readFile(new URL("../site/teacher/index.html", import.meta.url), "utf8");
+  assert.match(page, /data-portal="student"/);
+  assert.match(teacher, /data-portal="teacher"/);
+  assert.doesNotMatch(teacher, /<form\b/i);
+  assert.match(teacher, /connect-src 'none'/);
+  assert.equal(Object.hasOwn(replay, "model"), false);
+  assert.equal(Object.hasOwn(examReplay, "model"), false);
 });
 
 test("three profiles produce different day allocations and consume their own evidence", () => {
