@@ -36,7 +36,8 @@ if (!html.includes("connect-src 'none'") || !html.includes("form-action 'none'")
 }
 for (const match of html.matchAll(/(?:src|href)="([^"]+)"/g)) {
   const url = match[1];
-  if (!url.startsWith("#") && !files.includes(url.replace(/^\.\//, ""))) {
+  const asset = url.replace(/^\.\//, "").replace(/\?v=[a-z0-9-]+$/, "");
+  if (!url.startsWith("#") && !files.includes(asset)) {
     throw new Error("Nonportable or unexpected asset: " + url);
   }
 }
