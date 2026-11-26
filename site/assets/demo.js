@@ -253,6 +253,14 @@ const examStates = { candidate: "待区分", confirmed: "已确认", rejected: "
 
 const interventionLabels = { ...examStates, rejected: "已驳回" };
 
+function layerMap() {
+  return '<figure class="layer-map"><figcaption>BFS 如何逐层访问</figcaption>' +
+    '<div class="map-plot" aria-hidden="true"><i class="map-edges"></i>' +
+    '<div><b>A</b></div><div><b>B</b><b>C</b></div><div><b>D</b><b>E</b></div></div>' +
+    '<div class="map-key" aria-hidden="true"><span>第 0 层</span><span>第 1 层</span><span>第 2 层</span></div>' +
+    '<span class="sr-only">从 A 出发，先访问 B 和 C，再访问 D 和 E。</span></figure>';
+}
+
 function examWorkbench() {
   const state = exams[alias];
   const days = Math.round((Date.parse(state.date) - Date.parse(state.today)) / 86400000);
@@ -270,15 +278,8 @@ function examWorkbench() {
   const steps = ["诊断", "区分错因", "专属教学", "独立复验"];
   const activeStep = state.ticket ? { diagnostic: 0, probe: 1, transfer: 3 }[state.ticket.kind]
     : !state.diagnostic ? 0 : pendingProbe ? 1 : availableTransfer || passed ? 3 : 2;
-  return '<section class="exam-header"><div><p class="kicker">考研 408 · 数据结构</p>' +
-    '<h1>ExamPilot 考试工作台</h1>' + link("teacher-exam", "查看教师干预", "secondary") +
-    '</div><dl class="exam-metrics"><div><dt>距离考试</dt><dd>' + days +
-    '<small> 天</small></dd></div><div><dt>每日预算</dt><dd>' + state.budget +
-    '<small> 分钟</small></dd></div></dl></section>' +
-    '<ol class="exam-steps" aria-label="教学进度">' + steps.map((step, index) =>
-      index === activeStep ? '<li aria-current="step">' + control("exam-jump", step, index, 'aria-label="跳到当前步骤 ' + step + '"') + '</li>'
-        : '<li>' + step + '</li>').join("") + '</ol>' +
-    '<div class="split section exam-grid"><section class="card padded"><div class="section-head"><h2>考试目标</h2></div>' +
+  const planPanels =
+    '<section class="card padded exam-config"><div class="section-head"><h2>考试目标</h2></div>' +
     '<div class="goal-fields"><label>考试日期<input type="date" id="exam-date" min="' +
     escape(state.today) + '" value="' + escape(state.date) + '"></label><label>每天可用分钟<select id="exam-budget">' +
     [8, 12, 18, 25, 35, 45, 60].map((minutes) => '<option' + (minutes === state.budget ? " selected" : "") +
@@ -287,8 +288,18 @@ function examWorkbench() {
     '<span class="muted">版本 ' + state.version + '</span></div><ol class="adaptive-list">' + plan.map((item) =>
       '<li><span class="day">第 ' + item.day + ' 天<br>' + item.minutes + ' 分钟</span><div><strong>' +
       item.action + ' · ' + item.label + '</strong><p>' + escape(item.reason) + '</p><small>估计优先级 ' + item.priority +
-      '</small></div></li>').join("") + '</ol></section></div>' +
-    '<div class="split section exam-grid"><section class="card padded exam-assessment"><h2>ErrorMind 错因与验证</h2><div class="actions">' +
+      '</small></div></li>').join("") + '</ol></section>';
+  return '<section class="exam-header"><div class="exam-intro"><p class="kicker">考研 408 / 数据结构</p>' +
+    '<h1>ExamPilot <span>考试工作台</span></h1><p class="exam-lead">从同一道图遍历题出发，看看你的作答如何改变下一步复习任务。</p>' +
+    '<div class="actions">' + control("exam-jump", "进入当前步骤", activeStep, "", "highlight") +
+    link("teacher-exam", "查看教师干预", "hero-light") + '</div>' +
+    '<dl class="exam-metrics"><div><dt>距离考试</dt><dd>' + days +
+    '<small> 天</small></dd></div><div><dt>每日预算</dt><dd>' + state.budget +
+    '<small> 分钟</small></dd></div></dl></div>' + layerMap() + '</section>' +
+    '<ol class="exam-steps" aria-label="教学进度">' + steps.map((step, index) =>
+      index === activeStep ? '<li aria-current="step">' + control("exam-jump", step, index, 'aria-label="跳到当前步骤 ' + step + '"') + '</li>'
+        : '<li>' + step + '</li>').join("") + '</ol>' +
+    '<div class="exam-layout"><div class="exam-column"><section class="card padded exam-assessment"><h2>ErrorMind 错因与验证</h2><div class="actions">' +
     control("exam-start", examActions.diagnostic, "diagnostic", state.diagnostic || question ? "disabled" : "", activeStep === 0 ? "primary" : "secondary") +
     control("exam-start", examActions.probe, "probe", !pendingProbe || question ? "disabled" : "", activeStep === 1 ? "primary" : "secondary") +
     control("exam-start", examActions.transfer, "transfer", !availableTransfer || question ? "disabled" : "", activeStep === 3 ? "primary" : "secondary") + '</div>' +
@@ -310,14 +321,16 @@ function examWorkbench() {
     (sample ? '<p class="muted">展示 ' + escape(sample.strategy) + ' 的本地审校片段 · ' + escape(examReplay.model) + ' · 讲义：' + escape(sample.source) + '</p>' +
       (sample.verified_example ? '<p class="memory-insight">' + escape(sample.verified_example) + '</p>' : '') +
       '<div class="answer" tabindex="-1">' + escape(sample.answer) + '</div>' : '') +
-    '</section></div>' + (shown?.id === "animation" ? visualization() : "");
+    '</section>' + (shown?.id === "animation" ? visualization() : "") +
+    '</div><aside class="exam-column" aria-label="考试计划">' + planPanels + '</aside></div>';
 }
 
 function examTeacher() {
   const learners = Object.values(exams);
   const count = (statuses) => learners.filter(({ intervention }) => statuses.includes(intervention)).length;
   const metrics = [["待处理", count(["suggested", "accepted"])], ["待独立验证", count(["completed"])], ["已有独立证据", count(["verified"])]];
-  return header("Teacher Copilot 干预队列", "根据虚拟学员的作答，记录补救并查看后续独立证据。", "教师管理端") +
+  return '<div class="teacher-intro">' +
+    header("Teacher Copilot 干预队列", "根据虚拟学员的作答，记录补救并查看后续独立证据。", "教师管理端") + '</div>' +
     '<dl class="exam-metrics teacher-metrics">' + metrics.map(([label, value]) =>
       '<div><dt>' + label + '</dt><dd>' + value + '</dd></div>').join("") + '</dl>' +
     '<div class="split teacher-queue">' + learners.map((state) => '<section class="card padded"><div class="section-head"><h2>虚拟学员 ' +
