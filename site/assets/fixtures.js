@@ -60,3 +60,42 @@ export const assessment = [
   { id: "w3", topic: "shortest", difficulty: 3, stem: "已知 d(C)=3、d(B)=9，C→B 权值 4。用 C 松弛后 d(B) 是多少？",
     choices: ["7", "9", "4"], key: 0, explanation: "比较 9 与 3 + 4，更新为 7。" },
 ];
+
+// Original public examples for the ExamPilot walkthrough.
+export const examSyllabus = {
+  basis: { label: "队列与栈", weight: 45, minutes: 10 },
+  traversal: { label: "图的遍历", weight: 90, minutes: 18, prerequisite: "basis" },
+  tree: { label: "二叉树遍历", weight: 75, minutes: 14 },
+  shortest: { label: "带权最短路径", weight: 70, minutes: 22, prerequisite: "traversal" },
+};
+
+export const examDiagnostic = {
+  stem: "无权路网要找经过最少路段的路线，采用哪种方法？",
+  options: ["取 DFS 首次找到的路线", "自行标注路段费用，取最低总价路线", "按距离分层，用 BFS 找终点"],
+  answer: 2, explanation: "无权图的最少边数可用 BFS 逐层查找。",
+};
+
+export const examErrors = [{
+  id: "dfs-first", label: "把 DFS 的首次到达当成最短", remedy: "对照栈深入与队列分层。",
+  strategy: "contrast",
+  probe: { stem: "DFS 先走长分支并找到出口。能据此认定边数最少吗？", options: ["能", "不能"],
+    answer: 1, confirms: 0, explanation: "首次抵达只证明可达，还可能有更短的另一条路线。" },
+}, {
+  id: "edge-cost", label: "混淆最少路段与最低总价", remedy: "分别列出路段数和总代价，再比较目标。",
+  strategy: "animation",
+  probe: { stem: "甲线路一段，乙线路两段。目标仅为最少路段，应选择哪条？",
+    options: ["甲线路", "若乙总费用更低就选乙"], answer: 0, confirms: 1,
+    explanation: "此题只比较路段数，甲的一段少于乙的两段。" },
+}];
+
+export const examTransfers = [{
+  stem: "博物馆的连廊只有 P→R、R→S、S→U、U→V 和 P→W、W→X、X→V。P 到 V 最少经过几条连廊？",
+  options: ["四条", "三条", "两条"], answer: 1, explanation: "P→W→X→V 是较短的路线，需要三条连廊。",
+}, {
+  stem: "接力图中，出发站可去甲或乙。甲经丙和丁到终点，乙经戊、己和庚到终点。每段需要一轮，最快几轮到终点？",
+  options: ["第四轮", "第三轮", "第五轮"], answer: 0, explanation: "经甲、丙、丁到终点的路线有四段。",
+}, {
+  stem: "等步长迷宫中，要保证第一次找到出口时步数最少，应该优先处理哪类状态？",
+  options: ["最后加入的状态", "离起点步数更少的状态", "节点字典序最小的状态"], answer: 1,
+  explanation: "按距起点的步数分层是 BFS 的队列规则。",
+}];
