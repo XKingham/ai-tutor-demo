@@ -5,7 +5,10 @@ import { dirname, join, resolve } from "node:path";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const site = join(root, "site");
 const dist = join(root, "dist");
-const files = ["index.html", "assets/brand.png", "assets/demo.css", "assets/demo.js", "assets/fixtures.js"];
+const files = [
+  "index.html", "assets/brand.png", "assets/demo.css", "assets/demo.js",
+  "assets/fixtures.js", "assets/learner-state.js", "assets/replays.js",
+];
 const allowedOutputs = new Set([...files, ".nojekyll"]);
 
 async function checkContents(folder, prefix = "") {
