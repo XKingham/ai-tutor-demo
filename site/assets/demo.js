@@ -16,7 +16,7 @@ const view = document.querySelector("#view");
 const teacherPortal = document.body.dataset.portal === "teacher";
 const studentUrl = new URL("../", import.meta.url);
 const teacherUrl = new URL("teacher/", studentUrl);
-const trajectoryArt = new URL("./study-trajectories.webp", import.meta.url).href;
+const graphArt = new URL("./graph-study.webp", import.meta.url).href;
 const sessionKey = "zhiyan-demo-portals-v1";
 const announcement = document.querySelector("#announcement");
 let roster = makeDemo();
@@ -46,7 +46,13 @@ const control = (action, label, id = "", extra = "", variant = "secondary") =>
   '<button type="button" class="button ' + variant + '" data-action="' + action + '" data-id="' + id + '" ' + extra + '>' + escape(label) + '</button>';
 
 function header(title, copy, mode = "学生工作台") {
-  return '<div class="page-heading"><span class="kicker">' + mode + '</span><h1>' + title + '</h1><p>' + copy + '</p></div>';
+  return '<div class="page-heading">' + (["学生工作台", "教师管理端"].includes(mode) ? "" :
+    '<span class="kicker">' + mode + '</span>') + '<h1>' + title + '</h1><p>' + copy + '</p></div>';
+}
+
+function courseArt() {
+  return '<figure class="trajectory-art course-ink-art"><img src="' + graphArt + '" width="1200" height="800" ' +
+    'fetchpriority="high" alt=""><figcaption>课程专题 · 图的遍历与最短路径</figcaption></figure>';
 }
 
 function personaBar() {
@@ -77,25 +83,25 @@ function today(learner) {
   const next = tasks[0];
   const topics = Object.keys(concepts);
   const checked = topics.filter((topic) => mastery(learner, topic).count > 0).length;
-  return header("考研 408 · 数据结构", profile.name + " · " + profile.stage + " · " + profile.preference, "课程总览") +
-    '<div class="workspace-overview"><section class="card padded demo-focus"><h2>今日个性化任务</h2>' +
-    (next ? '<p class="task-duration">' + next.minutes + ' 分钟</p><h3>' + actions[next.status] + ' · ' + concepts[next.topic].title +
-      '</h3><p>' + escape(next.reason) + '</p>' : '<p>今天无待安排的知识点任务。</p>') +
+  return header("考研 408 · 数据结构", profile.name + " · " + profile.stage + " · " + profile.preference) +
+    '<section class="study-cover"><div class="study-cover-content"><h2>今日个性化任务</h2>' +
+    (next ? '<h3>' + concepts[next.topic].title + '</h3><p class="task-duration">' + actions[next.status] + ' · ' + next.minutes +
+      ' 分钟</p><p>' + escape(next.reason) + '</p>' : '<p>今天无待安排的知识点任务。</p>') +
     '<div class="actions">' + link(learner.history.length ? "practice" : "diagnosis",
       learner.history.length ? "开始针对性练习" : "开始初始诊断", "primary") + link("plan", "完整路径") +
     '</div>' + (tasks.length > 1 ? '<details><summary>其余今日任务（' + (tasks.length - 1) + '）</summary>' +
-      taskList(tasks.slice(1)) + '</details>' : '') + '</section>' +
-    '<section class="card padded demo-evidence"><h2>知识点证据</h2><p><strong>' + checked + '</strong> / ' +
-    topics.length + ' 个知识点有作答证据</p><progress aria-label="知识点测评覆盖" value="' + checked + '" max="' +
-    topics.length + '"></progress>' + masteryGrid(learner) + '</section></div>' +
-    '<div class="split section"><section class="card padded"><div class="section-head"><h2>学习目标</h2>' +
-    badge("虚拟档案") + '</div><div class="goal-fields"><label>攻克的知识点<select id="goal">' +
+      taskList(tasks.slice(1)) + '</details>' : '') + '</div>' + courseArt() + '</section>' +
+    '<div class="workspace-overview"><div class="today-work"><section class="goal-panel"><h2>学习目标</h2>' +
+    '<div class="goal-fields"><label>攻克的知识点<select id="goal">' +
     Object.entries(concepts).map(([id, item]) => '<option value="' + id + '"' + (id === profile.goal ? " selected" : "") +
       '>' + item.title + '</option>').join("") + '</select></label><label>每天可用时间<select id="minutes">' +
     [10, 12, 15, 20, 25, 30, 40, 60].map((time) => '<option' + (time === profile.minutes ? " selected" : "") +
       '>' + time + '</option>').join("") + '</select></label></div><p class="muted">目标和时间变更后，路径会即时重算。</p></section>' +
-    '<section class="card padded"><h2>继续学习</h2><div class="actions">' + link("knowledge", "沉浸阅读") +
-    link("tutor", "对比教学回放") + link("memory", "查看学习记忆") + '</div></section></div>';
+    '<section class="continue-study"><h2>继续学习</h2><div>' + link("knowledge", "沉浸阅读") +
+    link("tutor", "对比教学回放") + link("memory", "查看学习记忆") + '</div></section></div>' +
+    '<section class="demo-evidence"><h2>知识点证据</h2><p><strong>' + checked + '</strong> / ' +
+    topics.length + ' 个知识点有作答证据</p><progress aria-label="知识点测评覆盖" value="' + checked + '" max="' +
+    topics.length + '"></progress>' + masteryGrid(learner) + '</section></div>';
 }
 
 function plan(learner) {
@@ -255,13 +261,17 @@ function teacherReport() {
   const errors = assessment.map((question) => ({
     question, count: summary.filter(([, learner]) => learner.evidence[question.id]?.correct === false).length,
   })).filter((row) => row.count).sort((a, b) => b.count - a.count);
+  const assessed = summary.filter(([, learner]) => learner.history.length).length;
+  const followup = summary.filter(([, learner]) => Object.keys(concepts).some((id) => mastery(learner, id).status === "review")).length;
   return header("班级诊断", "以下数据由虚拟学员在本浏览器中的作答更新。", "教师管理端") +
-    '<section class="card padded"><div class="section-head"><h2>知识点掌握热力图</h2>' + badge("浏览器计算") +
-    '</div><div class="wide-table"><table><thead><tr><th>学员</th>' + Object.values(concepts).map((item) =>
+    '<section class="card padded diagnosis-matrix"><h2>知识点掌握热力图</h2>' +
+    '<dl class="diagnosis-summary"><div><dt>虚拟学员</dt><dd>' + summary.length + '</dd></div><div><dt>有测评证据</dt><dd>' +
+    assessed + '</dd></div><div><dt>存在待补习知识点</dt><dd>' + followup + '</dd></div></dl>' +
+    '<div class="wide-table" role="region" tabindex="0" aria-label="知识点掌握表"><table><thead><tr><th>学员</th>' + Object.values(concepts).map((item) =>
       '<th scope="col">' + item.title + '</th>').join("") + '</tr></thead><tbody>' +
     summary.map(([, learner]) => '<tr><th scope="row">' + learner.profile.name + '</th>' + Object.keys(concepts).map((topic) => {
       const row = mastery(learner, topic);
-      return '<td>' + badge(statusLabels[row.status], row.status) + '</td>';
+      return '<td>' + badge(statusLabels[row.status] + (row.count ? ' · ' + row.count + ' 题' : ''), row.status) + '</td>';
     }).join("") + '</tr>').join("") + '</tbody></table></div></section><div class="split section">' +
     '<section class="card padded"><h2>教学调整与干预</h2><ol class="adaptive-list">' +
     summary.map(([, learner]) => {
@@ -334,8 +344,7 @@ function examWorkbench() {
     '<h1>同一道题，<span>两条学习轨迹</span></h1><p class="exam-lead">两位学员答同一道图遍历题。跟着他们的作答，看错因如何改变下一步教学。</p>' +
     '<div class="actions">' + control("exam-jump", "进入当前步骤", activeStep, "", "highlight") +
     control("exam-compare", "比较两名学员", "", "", "secondary") + '</div></div>' +
-    '<figure class="trajectory-art"><img src="' + trajectoryArt + '" width="1448" height="1086" fetchpriority="high" ' +
-    'alt="两条带朱红色手绘标记的半透明描图纸，从一个共同起点沿不同方向折叠展开"></figure></section>' +
+    courseArt() + '</section>' +
     '<section class="case-session" aria-label="图的遍历案例"><div><p class="kicker">ExamPilot · 图的遍历</p>' +
     personaBar() + '</div><dl class="exam-metrics"><div><dt>距考试</dt><dd>' + days +
     '<small> 天</small></dd></div><div><dt>每日预算</dt><dd>' + state.budget +
