@@ -9,6 +9,9 @@ const learnerTabs = [
   ["practice", "智能练习"], ["knowledge", "课程知识库"], ["probability", "概率推断"], ["memory", "学习记忆"], ["report", "学情报告"],
 ];
 const teacherTabs = [["teacher-exam", "考试干预"], ["teacher-report", "班级诊断"], ["teacher-home", "课程资料"]];
+const learnerGroups = [["课程学习", ["today", "knowledge", "tutor", "probability"]],
+  ["练习与评估", ["exam", "diagnosis", "practice", "plan"]], ["学习档案", ["memory", "report"]]];
+const teacherGroups = [["教学跟进", ["teacher-exam", "teacher-report"]], ["课程管理", ["teacher-home"]]];
 const view = document.querySelector("#view");
 const teacherPortal = document.body.dataset.portal === "teacher";
 const studentUrl = new URL("../", import.meta.url);
@@ -27,6 +30,7 @@ let activity = null;
 let graphMode = "bfs";
 let graphStep = 0;
 let tutorOpen = false;
+let readingFilter = "";
 let defectRate = 5;
 
 const escape = (value) => String(value).replace(/[&<>"']/g, (char) =>
@@ -70,21 +74,28 @@ function masteryGrid(learner) {
 function today(learner) {
   const profile = learner.profile;
   const tasks = pathway(learner).filter((item) => item.day === 1);
-  return '<section class="course-hero personal-hero"><div class="hero-content"><span class="hero-label">考研 408 · 数据结构</span>' +
-    '<h1>今日个性化任务</h1><p>' + profile.name + ' · ' + profile.stage + ' · ' + profile.preference +
-    '</p><div class="actions">' + link(learner.history.length ? "practice" : "diagnosis",
-      learner.history.length ? "开始针对性练习" : "开始初始诊断", "hero-primary") +
-    link("tutor", "对比教学回放", "hero-light") + '</div></div>' +
-    '<div class="hero-summary"><strong>' + profile.minutes + '</strong><span>分钟 / 天</span><p>' + concepts[profile.goal].title +
-    '</p></div></section>' +
+  const next = tasks[0];
+  const topics = Object.keys(concepts);
+  const checked = topics.filter((topic) => mastery(learner, topic).count > 0).length;
+  return header("考研 408 · 数据结构", profile.name + " · " + profile.stage + " · " + profile.preference, "课程总览") +
+    '<div class="workspace-overview"><section class="card padded demo-focus"><h2>今日个性化任务</h2>' +
+    (next ? '<p class="task-duration">' + next.minutes + ' 分钟</p><h3>' + actions[next.status] + ' · ' + concepts[next.topic].title +
+      '</h3><p>' + escape(next.reason) + '</p>' : '<p>今天无待安排的知识点任务。</p>') +
+    '<div class="actions">' + link(learner.history.length ? "practice" : "diagnosis",
+      learner.history.length ? "开始针对性练习" : "开始初始诊断", "primary") + link("plan", "完整路径") +
+    '</div>' + (tasks.length > 1 ? '<details><summary>其余今日任务（' + (tasks.length - 1) + '）</summary>' +
+      taskList(tasks.slice(1)) + '</details>' : '') + '</section>' +
+    '<section class="card padded demo-evidence"><h2>知识点证据</h2><p><strong>' + checked + '</strong> / ' +
+    topics.length + ' 个知识点有作答证据</p><progress aria-label="知识点测评覆盖" value="' + checked + '" max="' +
+    topics.length + '"></progress>' + masteryGrid(learner) + '</section></div>' +
     '<div class="split section"><section class="card padded"><div class="section-head"><h2>学习目标</h2>' +
     badge("虚拟档案") + '</div><div class="goal-fields"><label>攻克的知识点<select id="goal">' +
     Object.entries(concepts).map(([id, item]) => '<option value="' + id + '"' + (id === profile.goal ? " selected" : "") +
       '>' + item.title + '</option>').join("") + '</select></label><label>每天可用时间<select id="minutes">' +
     [10, 12, 15, 20, 25, 30, 40, 60].map((time) => '<option' + (time === profile.minutes ? " selected" : "") +
       '>' + time + '</option>').join("") + '</select></label></div><p class="muted">目标和时间变更后，路径会即时重算。</p></section>' +
-    '<section class="card padded"><div class="section-head"><h2>今天学什么</h2>' + link("plan", "完整路径") +
-    '</div>' + taskList(tasks) + '</section></div><section class="card padded section"><h2>知识点状态</h2>' + masteryGrid(learner) + '</section>';
+    '<section class="card padded"><h2>继续学习</h2><div class="actions">' + link("knowledge", "沉浸阅读") +
+    link("tutor", "对比教学回放") + link("memory", "查看学习记忆") + '</div></section></div>';
 }
 
 function plan(learner) {
@@ -97,19 +108,21 @@ function plan(learner) {
 function tutor(learner) {
   const receipt = replay.personas[alias];
   const review = pathway(learner).find((row) => row.status === "review");
-  return header("AI 教学", "三个档案使用同一个问题。可切换学员，对比本地真实模型的脱敏教学回放。") +
-    '<div class="split"><section class="card padded"><div class="section-head"><h2>本地答疑回放</h2>' +
+  return header("AI 教学", "三个档案使用同一个问题。切换学员可对比本地答疑回放。") +
+    '<div class="demo-tutor-grid"><section class="card padded"><div class="section-head"><h2>本地答疑回放</h2>' +
     badge("本地教学回放", "ready") + '</div>' +
     '<p class="question">' + escape(replay.question) + '</p><p class="replay-strategy">' + escape(receipt.strategy) +
     '</p>' + (tutorOpen ? (receipt.verified_example ? '<div class="memory-insight"><strong>课程核算例图</strong><p>' +
       escape(receipt.verified_example) + '</p></div>' : '') +
-      '<div class="answer" tabindex="-1">' + escape(receipt.answer) + '</div><details class="source"><summary>核对公开示例材料</summary><blockquote>' +
-      lessons[concepts.traversal.lesson].quote + '</blockquote>' + (alias === "C" ? '<blockquote>' +
-      lessons[concepts.shortest.lesson].quote + '</blockquote>' : '') + '<p>回放所用课程章节：' + escape(receipt.section) +
-      '</p></details><p class="muted">展示经内容复核的脱敏片段。</p>' : control("replay", "播放本地答复", "", "", "primary")) + '</section>' +
-    '<section class="card padded"><h2>当前学员的下一步</h2><p class="muted">本浏览器中刚提交的作答只更新演示任务。回放保存的是本机验证时的结果。</p>' +
+      '<div class="answer" tabindex="-1">' + escape(receipt.answer) + '</div><p class="muted">展示经内容复核的脱敏片段。</p>' :
+      control("replay", "播放本地答复", "", "", "primary")) + '</section>' +
+    '<aside class="demo-tutor-side" aria-label="答疑资料与后续任务"><section class="card padded"><h2>可核查的教材来源</h2>' +
+    '<p class="muted">' + escape(receipt.section) + '</p><details class="source"><summary>核对公开示例材料</summary><blockquote>' +
+    lessons[concepts.traversal.lesson].quote + '</blockquote>' + (alias === "C" ? '<blockquote>' +
+    lessons[concepts.shortest.lesson].quote + '</blockquote>' : '') + '</details></section>' +
+    '<section class="card padded"><h2>当前学员的下一步</h2><p class="muted">浏览器按刚提交的作答更新演示任务。</p>' +
     (review ? '<p>' + review.reason + '</p>' : '<p>打开题库建立新的测评证据。</p>') +
-    link("practice", "进入针对性练习", "primary") + link("knowledge", "用 Little Tutor 导读") + '</section></div>';
+    '<div class="actions">' + link("practice", "进入针对性练习", "primary") + link("knowledge", "用 Little Tutor 导读") + '</div></section></aside></div>';
 }
 
 function practice(learner, kind) {
@@ -211,16 +224,22 @@ function visualization() {
 function knowledge(learner) {
   const concept = concepts[learner.reading];
   const material = lessons[concept.lesson];
+  const chapters = Object.entries(concepts);
+  const search = readingFilter.trim().toLowerCase();
+  const matches = (title) => title.toLowerCase().includes(search);
   return header("课程知识库", "三位虚拟学员使用同一套公开示例讲义。") +
-    '<div class="split"><section class="card padded"><h2>交互式阅读</h2><div class="link-stack">' +
-    Object.entries(concepts).map(([id, item]) => control("reading", item.title, id,
-      'aria-pressed="' + (id === learner.reading) + '"')).join("") +
-    '</div><h3>' + material.title + '</h3><p>' + material.summary + '</p><blockquote>' + material.quote +
-    '</blockquote></section><section class="card padded"><h2>Little Tutor 分步导读</h2>' +
+    '<div class="demo-tutor-grid"><div><section class="card padded demo-chapters"><div class="section-head">' +
+    '<h2>教材目录</h2><label>搜索教材<input id="reading-filter" type="search" value="' + escape(readingFilter) + '" /></label></div>' +
+    '<div class="link-stack">' + chapters.map(([id, item]) => control("reading", item.title, id,
+      'aria-pressed="' + (id === learner.reading) + '"' + (matches(item.title) ? "" : " hidden"))).join("") +
+    '</div><p id="reading-empty" class="muted"' + (chapters.some(([, item]) => matches(item.title)) ? " hidden" : "") +
+    '>没有符合条件的章节。</p></section><article class="card padded demo-document" aria-label="教材正文"><p class="kicker">' +
+    material.location + ' · 公开示例讲义</p><h2>' + material.title + '</h2><p>' + material.summary + '</p><blockquote>' + material.quote +
+    '</blockquote></article></div><aside class="card padded demo-companion" aria-label="阅读伴学"><h2>Little Tutor 分步导读</h2>' +
     badge("教材内置提示") + '<p>先读教材，再用一题检验理解。</p>' +
     '<details class="source"><summary>显示本节引导题</summary><p>' +
     assessment.find((item) => item.topic === learner.reading && item.diagnostic).stem + '</p><p>' + concept.remediation +
-    '</p></details><div class="actions">' + link("tutor", "查看真实教学回放") + '</div></section></div>' + visualization();
+    '</p></details><div class="actions">' + link("tutor", "查看真实教学回放") + '</div></aside></div>' + visualization();
 }
 
 function teacherHome() {
@@ -367,7 +386,8 @@ function examTeacher() {
       (state.intervention === "accepted" ? control("exam-teacher-complete", "记录补救完成", state.name, "", "primary") : '') +
       '<ol class="adaptive-list">' + state.actions.map((item) => '<li>' + interventionLabels[item.status] +
         (item.evidence ? ' · 独立证据 #' + item.evidence : '') + '</li>').join("") + '</ol></section>').join("") +
-    '</div><div class="actions"><a class="button primary" href="' + studentUrl.href + '">返回学生学习站</a></div>';
+    '</div><div class="actions"><a class="button primary" href="' + studentUrl.href + '">返回学生学习站</a>' +
+    link("teacher-report", "查看知识点热力图") + link("teacher-home", "查看课程资料") + '</div>';
 }
 
 function probability() {
@@ -463,9 +483,11 @@ function render() {
   if ((current === "exam" || teacherPortal) && !exams[alias]) alias = "A";
   const links = teacherPortal ? teacherTabs : learnerTabs;
   document.querySelector("#sidebar-label").textContent = teacherPortal ? "教师工作台" : "学生工作台";
-  document.querySelector("#sidebar-links").innerHTML = links.map(([id, label]) =>
-    '<a href="#' + id + '" ' + (id === current ? 'aria-current="page"' : "") + '>' + label + '</a>').join("");
   const edition = current === "exam";
+  const item = ([id, label]) => '<a href="#' + id + '" ' + (id === current ? 'aria-current="page"' : "") + '>' + label + '</a>';
+  document.querySelector("#sidebar-links").innerHTML = edition ? links.map(item).join("") :
+    (teacherPortal ? teacherGroups : learnerGroups).map(([label, ids]) =>
+      '<div class="demo-nav-group"><p>' + label + '</p>' + ids.map((id) => item(links.find(([key]) => key === id))).join("") + '</div>').join("");
   document.querySelector(".app-frame").classList.toggle("case-edition", edition);
   view.innerHTML = (edition || teacherPortal ? "" : personaBar()) + views[current](roster[alias]);
   document.title = view.querySelector("h1").textContent + " · 智研学堂";
@@ -505,6 +527,7 @@ view.addEventListener("click", (event) => {
     graphMode = "bfs";
     graphStep = 0;
     tutorOpen = false;
+    readingFilter = "";
     exams = examDemo();
     examHistory = [];
     examSelections = {};
@@ -570,6 +593,15 @@ view.addEventListener("click", (event) => {
   if (focus?.matches("h1")) focus.tabIndex = -1;
   focus?.focus({ preventScroll: focus !== next });
   announcement.textContent = message;
+});
+
+view.addEventListener("input", (event) => {
+  if (event.target.id !== "reading-filter") return;
+  readingFilter = event.target.value;
+  const search = readingFilter.trim().toLowerCase();
+  const items = [...view.querySelectorAll('button[data-action="reading"]')];
+  for (const button of items) button.hidden = !button.textContent.toLowerCase().includes(search);
+  view.querySelector("#reading-empty").hidden = items.some((button) => !button.hidden);
 });
 
 view.addEventListener("change", (event) => {
